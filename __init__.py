@@ -4,6 +4,7 @@ class LinkAnalyzer:
     from ._stats import (t_test_between, group_averages_whole, 
                         group_averages_hemi, get_average_link_matrix)
     from ._natures import get_natures
+    from ._trf import fit_trfs, subset_trfs_by_region, get_trf_statmap
 
     def __init__(self, experiment, controls, patients, visits, sessions, trials,
                 file_patterns="./Results/[{subject}]-[visit={visit}]-[beta].p",
