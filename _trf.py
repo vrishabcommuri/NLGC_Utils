@@ -249,7 +249,7 @@ def fit_trfs(self, condition, stimmapping, stims, fs=25, nlgc_starttime=10,
                         noise.x = np.roll(noise.x, (len(noise.x)//4)*i)
                         stimlist_noise.append(noise)
 
-                    boost_result = eel.boosting(y=ei, x=stimlist, **boosting_kwargs)
+                    boost_result = eel.boosting(y=ei, x=stimlist_noise, **boosting_kwargs)
                     noisemodels[i].append([eigno, i, boost_result, model])
     return trfs, noisemodels
 
