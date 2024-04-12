@@ -45,13 +45,14 @@ def _get_natures(model, factor, partition=None):
             # we have to exclude the B coefficients (diagonal of A matrix)
             if factor == 0.0:
                 row, col = np.where(~np.eye(84, 84, dtype=bool))
-            a1s.extend((link_natures[..., ei, ej, 0] * (model.get_J_statistics() >= factor))[row, col])
-            a2s.extend((link_natures[..., ei, ej, 1] * (model.get_J_statistics() >= factor))[row, col])
+            a1s.extend((link_natures[..., ei, ej, 0])[row, col])
+            a2s.extend((link_natures[..., ei, ej, 1])[row, col])
 
             # B coefficients are on diagonal of A matrix
-            row, col = np.where(np.eye(84, 84, dtype=bool))
-            b1s.extend((link_natures[..., ei, ej, 0])[row, col])
-            b2s.extend((link_natures[..., ei, ej, 1])[row, col])
+            if factor == 0.0:
+                row, _ = np.where(np.eye(84, 84, dtype=bool))
+            b1s.extend((link_natures[..., ei, ej, 0])[row, row]) # get coeffs for active sources
+            b2s.extend((link_natures[..., ei, ej, 1])[row, row])
     
     return a1s, a2s, b1s, b2s
 

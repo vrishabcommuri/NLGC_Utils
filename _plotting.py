@@ -3,6 +3,7 @@ import matplotlib as mpl
 import matplotlib.patches as mpatches
 from matplotlib.colors import ListedColormap
 from matplotlib import cm
+import numpy as np
 
 
 ################################################################################
@@ -185,7 +186,6 @@ def circle_plot(self, condition1, condition2, status1='C1', status2='C2', hemi=F
 # Railroad Plot
 ################################################################################
 
-@staticmethod
 def _get_vertices(n, rad, offset, centerxy=(0.5, 0.5)):
     # generate n vertices evenly spaced along a circle with radius rad
     # offset by offset degrees
@@ -210,7 +210,7 @@ def _get_vertices(n, rad, offset, centerxy=(0.5, 0.5)):
 #     idx = np.argmin(np.abs(np.array(list(ts.keys())) - midpt))
 #     return ts[np.array(list(ts.keys()))[idx]]
 
-@staticmethod 
+
 def _trace_bezier_midpoint(arrow):
     path = arrow.get_path().vertices
 
@@ -232,7 +232,7 @@ def _trace_bezier_midpoint(arrow):
     return *mpl.bezier.BezierSegment(path).point_at_t(0.72), \
             *mpl.bezier.BezierSegment(path).point_at_t(0.7357859531772575)
 
-@staticmethod
+
 def _push_wedge(factor, wx, wy, centerxy=(0.5, 0.5)):
     cx, cy = centerxy
     # radially push the wedge outwards from center
@@ -245,7 +245,7 @@ def _push_wedge(factor, wx, wy, centerxy=(0.5, 0.5)):
     return wx, wy
         
 
-def _add_connection(self, ax, posa, posb, bidirectional=False, inner=True, arc=0.2, 
+def _add_connection(ax, posa, posb, bidirectional=False, inner=True, arc=0.2, 
                 pushfactor={'inner':0.75, 'outer':1.15}, centerxy=(0.5, 0.5),
                 color={'inner':1, 'outer':1}):
     inner = 2*inner-1
@@ -259,9 +259,9 @@ def _add_connection(self, ax, posa, posb, bidirectional=False, inner=True, arc=0
     ax.add_patch(arrow)
     
     
-    mid_dx, mid_dy, midx, midy = self._trace_bezier_midpoint(arrow)
-    mid_dx, mid_dy = self._push_wedge(pushfactor['inner'], mid_dx, mid_dy, centerxy)
-    midx, midy = self._push_wedge(pushfactor['inner'], midx, midy, centerxy)
+    mid_dx, mid_dy, midx, midy = _trace_bezier_midpoint(arrow)
+    mid_dx, mid_dy = _push_wedge(pushfactor['inner'], mid_dx, mid_dy, centerxy)
+    midx, midy = _push_wedge(pushfactor['inner'], midx, midy, centerxy)
 
     ax.arrow(midx, midy, 0.001*(mid_dx-midx), 0.001*(mid_dy-midy), width=0.01, color=color['inner'])
     
@@ -269,13 +269,12 @@ def _add_connection(self, ax, posa, posb, bidirectional=False, inner=True, arc=0
         arrow = mpatches.FancyArrowPatch(posa, posb,
                                 connectionstyle=f"arc3,rad={-(-int(inner))*arc}", color=color['outer'], **kw)
         ax.add_patch(arrow)
-        mid_dx, mid_dy, midx, midy = self._trace_bezier_midpoint(arrow)
-        mid_dx, mid_dy = self._push_wedge(pushfactor['outer'], mid_dx, mid_dy, centerxy)
-        midx, midy = self._push_wedge(pushfactor['outer'], midx, midy, centerxy)
+        mid_dx, mid_dy, midx, midy = _trace_bezier_midpoint(arrow)
+        mid_dx, mid_dy = _push_wedge(pushfactor['outer'], mid_dx, mid_dy, centerxy)
+        midx, midy = _push_wedge(pushfactor['outer'], midx, midy, centerxy)
         ax.arrow(midx, midy, 0.001*(midx-mid_dx), 0.001*(midy-mid_dy), width=0.01, color=color['outer'])
         
 
-@staticmethod
 def _draw_selfloop_arrow(ax, centX, centY, radius, angle_, theta2_, color_):
     from numpy import radians as rad
     #========Line
@@ -300,7 +299,8 @@ def _draw_selfloop_arrow(ax, centX, centY, radius, angle_, theta2_, color_):
     ax.set_xlim([centX-radius,centY+radius]) and ax.set_ylim([centY-radius,centY+radius]) 
     # Make sure you keep the axes scaled or else arrow will distort
 
-def railroad_plot(self, lkm, rad=0.3, centerxy=(0.5, 0.5), nverts=3, region=['P','F', 'T', 'O', 'S'], 
+@staticmethod
+def railroad_plot(lkm, rad=0.3, centerxy=(0.5, 0.5), nverts=3, region=['P','F', 'T', 'O', 'S'], 
                     colors=['tab:blue', 'tab:green', 'tab:red', 'purple', 'pink'],
                     pushfactor={'inner':0.715, 'outer':1.147}, figsize=(10, 10), cmap=mpl.colormaps['binary'],
                     ax_=None):
@@ -316,8 +316,8 @@ def railroad_plot(self, lkm, rad=0.3, centerxy=(0.5, 0.5), nverts=3, region=['P'
         else:
             ax = ax_
 
-        xs, ys, _, _ = self._get_vertices(nverts, rad, 0, centerxy)
-        xs_selfloop, ys_selfloop, _, thetas_selfloop = self._get_vertices(nverts, rad+0.1, 0, centerxy)
+        xs, ys, _, _ = _get_vertices(nverts, rad, 0, centerxy)
+        xs_selfloop, ys_selfloop, _, thetas_selfloop = _get_vertices(nverts, rad+0.1, 0, centerxy)
 
         for i in range(nverts):
             a = lkm[i, (i+1)%nverts]
@@ -330,7 +330,7 @@ def railroad_plot(self, lkm, rad=0.3, centerxy=(0.5, 0.5), nverts=3, region=['P'
 
             color_i = cmap(a)
             color_o = cmap(b)
-            self._add_connection(ax, (xs[i], ys[i]), (xs[(i+1)%nverts], ys[(i+1)%nverts]), 
+            _add_connection(ax, (xs[i], ys[i]), (xs[(i+1)%nverts], ys[(i+1)%nverts]), 
                         bidirectional=True, arc=0.25, pushfactor={'inner':0.715, 'outer':1.147}, 
                         color={'inner':color_i, 'outer':color_o})
 
@@ -341,7 +341,7 @@ def railroad_plot(self, lkm, rad=0.3, centerxy=(0.5, 0.5), nverts=3, region=['P'
             if c == 1:
                 c = c - 0.00001
             color_self = cmap(c)
-            self._draw_selfloop_arrow(ax, xs_selfloop[i], ys_selfloop[i], 0.15, -180+thetas_selfloop[i], 315, 
+            _draw_selfloop_arrow(ax, xs_selfloop[i], ys_selfloop[i], 0.15, -180+thetas_selfloop[i], 315, 
                 color_=color_self)
         
         for idx, (i, j) in enumerate(zip(xs, ys)):
