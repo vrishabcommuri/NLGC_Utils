@@ -8,7 +8,8 @@ class LinkAnalyzer:
 
     def __init__(self, experiment, controls, patients, visits, sessions, trials,
                 file_patterns="./Results/[{subject}]-[visit={visit}]-[beta].p",
-                lobe_mapping=None, subjects_dir=None, exclusions=None):
+                lobe_mapping=None, subjects_dir=None, exclusions=None,
+                minlinkcount=0, maxlinkcount=84*84):
         self.experiment = experiment
         if not exclusions is None:
             controls = [i for i in controls if i not in exclusions]
@@ -61,6 +62,8 @@ class LinkAnalyzer:
             }
         self.target_lobes = list(self.lobe_mapping.keys())
         
+        self.minlinkcount = minlinkcount
+        self.maxlinkcount = maxlinkcount
 
 
         self.construct_link_matrix()

@@ -47,10 +47,14 @@ def construct_link_matrix(self):
                             try:
                                 with open(file_name, 'rb') as fp: 
                                     NLGC_obj = pickle.load(fp)
+
+                                J = NLGC_obj.get_J_statistics()
+                                if J.sum() < self.minlinkcount or J.sum() > self.maxlinkcount:
+                                    raise ValueError(f"link count {J.sum()} outside of analysis range {self.minlinkcount}-{self.maxlinkcount}!")
                                 
                                 self.models.append([file_name, f"{subject}{visit}{session}{trial}", NLGC_obj])
 
-                                J = NLGC_obj.get_J_statistics()
+                                
                             except Exception as e:
                                 print(f"caught exception: {e}")
                                 print(f"continuing with zero link matrix for {subject}, v={visit}, s={session}, t={trial}")
