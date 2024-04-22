@@ -84,6 +84,20 @@ def group_norm_averages_whole(self, condition1, condition2):
         c2_group_avg /= count
 
     return c1_group_avg, c2_group_avg
+
+def group_norm_whole_list(self, condition1, condition2):
+    c1_group_avg = []
+    c2_group_avg = []
+    for subject, visit, session, trial in condition1:
+        links_normed = self.conn[f'{subject}{visit}{session}{trial}']
+        c1_group_avg.append(links_normed)
+    
+    count = 0
+    for subject, visit, session, trial in condition2:
+        links_normed = self.conn_raw[f'{subject}{visit}{session}{trial}']
+        c2_group_avg.append(links_normed)
+        
+    return c1_group_avg, c2_group_avg
     
 
 def group_averages_hemi(self, condition1, condition2):
@@ -161,6 +175,29 @@ def group_norm_averages_hemi(self, condition1, condition2):
         if c2count != 0:
             c2_group_avg_hemi[hemi_idx, :, :] /= c2count
     
+    return c1_group_avg_hemi, c2_group_avg_hemi
+
+
+def group_norm_hemi_list(self, condition1, condition2):
+    c1_group_avg_hemi = []
+    c2_group_avg_hemi = []
+    
+    ########## c1 ##########
+    for subject, visit, session, trial, hemilist in condition1:
+        for srchemi, dsthemi in hemilist:
+            hemi_idx = self._get_hemi_idx(srchemi, dsthemi)
+            links_normed = self.conn_hemi[f'{subject}{visit}{session}{trial}'][hemi_idx, :, :]
+            # links for this hemisphere
+            c1_group_avg_hemi.append(links_normed)
+    
+            
+    ########## c2 ##########
+    for subject, visit, session, trial, hemilist in condition2:
+        for srchemi, dsthemi in hemilist:
+            hemi_idx = self._get_hemi_idx(srchemi, dsthemi)
+            links_normed = self.conn_hemi[f'{subject}{visit}{session}{trial}'][hemi_idx,:, :]
+            c2_group_avg_hemi.append(links_normed)
+        
     return c1_group_avg_hemi, c2_group_avg_hemi
 
 
