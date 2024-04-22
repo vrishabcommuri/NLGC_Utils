@@ -123,7 +123,7 @@ def heatmap_linkmatrix(self, lkm1, lkm2, status1='C1', status2='C2', hemi=False,
         plt.show()
     
 
-def heatmap(self, condition1, condition2, status1='C1', status2='C2', hemi=False, 
+def heatmap(self, condition1, condition2, status1='C1', status2='C2', hemi=False, norm=False,
                      overlay_nums=False, vmin=0, vmax=1, diffvmin=-1, diffvmax=1, figsize=(10, 3), 
                      hemimapping={'lh':'lh', 'rh':'rh'}):
     if hemi == True:
@@ -135,12 +135,19 @@ def heatmap(self, condition1, condition2, status1='C1', status2='C2', hemi=False
 
     ###################################
     if hemi == False:
-        c1_group_avg, c2_group_avg = self.group_averages_whole(condition1, condition2)
+        if norm:
+            c1_group_avg, c2_group_avg = self.group_norm_averages_whole(condition1, condition2)
+        else:
+            c1_group_avg, c2_group_avg = self.group_averages_whole(condition1, condition2)
 
         self.heatmap_linkmatrix(c1_group_avg, c2_group_avg, status1, status2, hemi, 
                      overlay_nums, vmin, vmax, diffvmin, diffvmax, figsize, hemimapping)
     else:
-        c1_group_avg_hemi, c2_group_avg_hemi = self.group_averages_hemi(condition1, condition2)
+        if norm:
+            c1_group_avg_hemi, c2_group_avg_hemi = self.group_norm_averages_hemi(condition1, condition2)
+        else:
+            c1_group_avg_hemi, c2_group_avg_hemi = self.group_averages_hemi(condition1, condition2)
+
         self.heatmap_linkmatrix(c1_group_avg_hemi, c2_group_avg_hemi, status1, status2, hemi, 
                      overlay_nums, vmin, vmax, diffvmin, diffvmax, figsize, hemimapping)
 
