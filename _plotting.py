@@ -14,8 +14,8 @@ from mne_connectivity import viz
 def heatmap_linkmatrix(self, lkm1, lkm2, status1='C1', status2='C2', hemi=False, 
                      overlay_nums=False, vmin=0, vmax=1, diffvmin=-1, diffvmax=1, figsize=(10, 3)):
     if hemi == False:
-        c1_group_avg = lkm1.T
-        c2_group_avg = lkm2.T
+        c1_group_avg = np.copy(lkm1).T
+        c2_group_avg = np.copy(lkm2).T
 
         fig, ax = plt.subplots(1, 3, figsize=figsize)
 
@@ -62,6 +62,8 @@ def heatmap_linkmatrix(self, lkm1, lkm2, status1='C1', status2='C2', hemi=False,
 
     ###################################
     else:
+        c1_group_avg_hemi = np.copy(lkm1)
+        c2_group_avg_hemi = np.copy(lkm2)
         for i in range(4):
             c1_group_avg_hemi[i] = lkm1[i].T
             c2_group_avg_hemi[i] = lkm2[i].T
