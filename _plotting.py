@@ -4,27 +4,19 @@ import matplotlib.patches as mpatches
 from matplotlib.colors import ListedColormap
 from matplotlib import cm
 import numpy as np
+from mne_connectivity import viz
 
 
 ################################################################################
 # Heatmap
 ################################################################################
 
-def heatmap(self, condition1, condition2, status1='C1', status2='C2', hemi=False, 
+def heatmap_linkmatrix(self, lkm1, lkm2, status1='C1', status2='C2', hemi=False, 
                      overlay_nums=False, vmin=0, vmax=1, diffvmin=-1, diffvmax=1, figsize=(10, 3)):
-    if hemi == True:
-        condition1, condition2 = self._check_hemis(condition1), self._check_hemis(condition2)
-        
-    if self.conn is None:
-        self.tabulate_links(verbose=False)
-
-
-    ###################################
     if hemi == False:
-        c1_group_avg, c2_group_avg = self.group_averages_whole(condition1, condition2)
-        c1_group_avg = c1_group_avg.T
-        c2_group_avg = c2_group_avg.T
-        
+        c1_group_avg = lkm1.T
+        c2_group_avg = lkm2.T
+
         fig, ax = plt.subplots(1, 3, figsize=figsize)
 
         im = ax[0].imshow(c1_group_avg, vmin=vmin, vmax=vmax)
@@ -70,10 +62,9 @@ def heatmap(self, condition1, condition2, status1='C1', status2='C2', hemi=False
 
     ###################################
     else:
-        c1_group_avg_hemi, c2_group_avg_hemi = self.group_averages_hemi(condition1, condition2)
         for i in range(4):
-            c1_group_avg_hemi[i] = c1_group_avg_hemi[i].T
-            c2_group_avg_hemi[i] = c2_group_avg_hemi[i].T
+            c1_group_avg_hemi[i] = lkm1[i].T
+            c2_group_avg_hemi[i] = lkm2[i].T
         
         fig, ax = plt.subplots(2, 6, figsize=figsize)
 
@@ -121,6 +112,27 @@ def heatmap(self, condition1, condition2, status1='C1', status2='C2', hemi=False
         fig.colorbar(im2, cax=cbar_ax)
 
         plt.show()
+    
+
+def heatmap(self, condition1, condition2, status1='C1', status2='C2', hemi=False, 
+                     overlay_nums=False, vmin=0, vmax=1, diffvmin=-1, diffvmax=1, figsize=(10, 3)):
+    if hemi == True:
+        condition1, condition2 = self._check_hemis(condition1), self._check_hemis(condition2)
+        
+    if self.conn is None:
+        self.tabulate_links(verbose=False)
+
+
+    ###################################
+    if hemi == False:
+        c1_group_avg, c2_group_avg = self.group_averages_whole(condition1, condition2)
+
+        self.heatmap_linkmatrix(c1_group_avg, c2_group_avg, status1, status2, hemi, 
+                     overlay_nums, vmin, vmax, diffvmin, diffvmax, figsize)
+    else:
+        c1_group_avg_hemi, c2_group_avg_hemi = self.group_averages_hemi(condition1, condition2)
+        self.heatmap_linkmatrix(c1_group_avg_hemi, c2_group_avg_hemi, status1, status2, hemi, 
+                     overlay_nums, vmin, vmax, diffvmin, diffvmax, figsize)
 
 
 ################################################################################

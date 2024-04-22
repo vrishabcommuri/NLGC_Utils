@@ -1,6 +1,6 @@
 class LinkAnalyzer:
     from ._roi import construct_link_matrix, tabulate_links
-    from ._plotting import heatmap, circle_plot, railroad_plot
+    from ._plotting import heatmap, heatmap_linkmatrix, circle_plot, railroad_plot
     from ._stats import (t_test_between, group_averages_whole, 
                         group_averages_hemi, get_average_link_matrix)
     from ._natures import get_natures
