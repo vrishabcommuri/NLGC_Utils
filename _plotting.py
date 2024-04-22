@@ -12,7 +12,8 @@ from mne_connectivity import viz
 ################################################################################
 
 def heatmap_linkmatrix(self, lkm1, lkm2, status1='C1', status2='C2', hemi=False, 
-                     overlay_nums=False, vmin=0, vmax=1, diffvmin=-1, diffvmax=1, figsize=(10, 3)):
+                     overlay_nums=False, vmin=0, vmax=1, diffvmin=-1, diffvmax=1, 
+                     figsize=(10, 3), hemimapping={'lh':'lh', 'rh':'rh'}):
     if hemi == False:
         c1_group_avg = np.copy(lkm1).T
         c2_group_avg = np.copy(lkm2).T
@@ -74,7 +75,9 @@ def heatmap_linkmatrix(self, lkm1, lkm2, status1='C1', status2='C2', hemi=False,
                                         ('lh', 'rh', 0, 1), ('rh', 'lh', 1, 0)]:
             hemi_idx = self._get_hemi_idx(srchemi, dsthemi)
             im = ax[i, j].imshow(c1_group_avg_hemi[hemi_idx], vmin=vmin, vmax=vmax)
-            ax[i, j].set_title(f"{status1}:{srchemi}->{dsthemi}")
+            s = hemimapping[srchemi]
+            d = hemimapping[dsthemi]
+            ax[i, j].set_title(f"{status1}:{s}->{d}")
             ax[i, j].set_xticks(list(range(len(self.target_lobes))), self.target_lobes)
             ax[i, j].set_yticks(list(range(len(self.target_lobes))), self.target_lobes)
             if overlay_nums == True:
@@ -84,7 +87,9 @@ def heatmap_linkmatrix(self, lkm1, lkm2, status1='C1', status2='C2', hemi=False,
                             round(c1_group_avg_hemi[hemi_idx, dstidx, srcidx],2), ha="center", va="center", color="w")
 
             ax[i, j+2].imshow(c2_group_avg_hemi[hemi_idx], vmin=vmin, vmax=vmax)
-            ax[i, j+2].set_title(f"{status2}:{srchemi}->{dsthemi}")
+            s = hemimapping[srchemi]
+            d = hemimapping[dsthemi]
+            ax[i, j+2].set_title(f"{status2}:{s}->{d}")
             ax[i, j+2].set_xticks(list(range(len(self.target_lobes))), self.target_lobes)
             ax[i, j+2].set_yticks(list(range(len(self.target_lobes))), self.target_lobes)
             if overlay_nums == True:
@@ -96,7 +101,9 @@ def heatmap_linkmatrix(self, lkm1, lkm2, status1='C1', status2='C2', hemi=False,
             im2 = ax[i, j+4].imshow(c1_group_avg_hemi[hemi_idx] \
                                 - c2_group_avg_hemi[hemi_idx],
                                 vmin=diffvmin, vmax=diffvmax, cmap='seismic')
-            ax[i, j+4].set_title(f"{status1}-{status2}:{srchemi}->{dsthemi}")
+            s = hemimapping[srchemi]
+            d = hemimapping[dsthemi]
+            ax[i, j+4].set_title(f"{status1}-{status2}:{s}->{d}")
             ax[i, j+4].set_xticks(list(range(len(self.target_lobes))), self.target_lobes)
             ax[i, j+4].set_yticks(list(range(len(self.target_lobes))), self.target_lobes)
             if overlay_nums == True:
@@ -117,7 +124,8 @@ def heatmap_linkmatrix(self, lkm1, lkm2, status1='C1', status2='C2', hemi=False,
     
 
 def heatmap(self, condition1, condition2, status1='C1', status2='C2', hemi=False, 
-                     overlay_nums=False, vmin=0, vmax=1, diffvmin=-1, diffvmax=1, figsize=(10, 3)):
+                     overlay_nums=False, vmin=0, vmax=1, diffvmin=-1, diffvmax=1, figsize=(10, 3), 
+                     hemimapping={'lh':'lh', 'rh':'rh'}):
     if hemi == True:
         condition1, condition2 = self._check_hemis(condition1), self._check_hemis(condition2)
         
@@ -130,11 +138,11 @@ def heatmap(self, condition1, condition2, status1='C1', status2='C2', hemi=False
         c1_group_avg, c2_group_avg = self.group_averages_whole(condition1, condition2)
 
         self.heatmap_linkmatrix(c1_group_avg, c2_group_avg, status1, status2, hemi, 
-                     overlay_nums, vmin, vmax, diffvmin, diffvmax, figsize)
+                     overlay_nums, vmin, vmax, diffvmin, diffvmax, figsize, hemimapping)
     else:
         c1_group_avg_hemi, c2_group_avg_hemi = self.group_averages_hemi(condition1, condition2)
         self.heatmap_linkmatrix(c1_group_avg_hemi, c2_group_avg_hemi, status1, status2, hemi, 
-                     overlay_nums, vmin, vmax, diffvmin, diffvmax, figsize)
+                     overlay_nums, vmin, vmax, diffvmin, diffvmax, figsize, hemimapping)
 
 
 ################################################################################
