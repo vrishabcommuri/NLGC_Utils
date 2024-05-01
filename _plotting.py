@@ -5,7 +5,8 @@ from matplotlib.colors import ListedColormap
 from matplotlib import cm
 import numpy as np
 from mne_connectivity import viz
-
+import plotly.graph_objects as go
+import pandas as pd
 
 ################################################################################
 # Heatmap
@@ -333,59 +334,117 @@ def railroad_plot(lkm, rad=0.3, centerxy=(0.5, 0.5), nverts=3, region=['P','F', 
                     colors=['tab:blue', 'tab:green', 'tab:red', 'purple', 'pink'],
                     pushfactor={'inner':0.715, 'outer':1.147}, figsize=(10, 10), cmap=mpl.colormaps['binary'],
                     ax_=None):
-        # create a railroad plot from a link matrix. 
-        # the link matrix should have normalized values, i.e., each cell should be a percentage in [0, 1].
-        
-        # links from behrad go row:dst col:src but we need row:src col:dst.
-        lkm = lkm.T
+    # create a railroad plot from a link matrix. 
+    # the link matrix should have normalized values, i.e., each cell should be a percentage in [0, 1].
+    
+    # links from behrad go row:dst col:src but we need row:src col:dst.
+    lkm = lkm.T
+    
+    if ax_ is None:
+        plt.figure(figsize=figsize)
+        ax = plt.gca()
+    else:
+        ax = ax_
+
+    xs, ys, _, _ = _get_vertices(nverts, rad, 0, centerxy)
+    xs_selfloop, ys_selfloop, _, thetas_selfloop = _get_vertices(nverts, rad+0.1, 0, centerxy)
+
+    for i in range(nverts):
+        a = lkm[i, (i+1)%nverts]
+        b = lkm[(i+1)%nverts, i]
+        assert(a <= 1 and a >= 0 and b <= 1 and b >= 0)
+        if a == 1:
+            a = a - 0.00001
+        if b == 1:
+            b = b - 0.00001
+
+        color_i = cmap(a)
+        color_o = cmap(b)
+        _add_connection(ax, (xs[i], ys[i]), (xs[(i+1)%nverts], ys[(i+1)%nverts]), 
+                    bidirectional=True, arc=0.25, pushfactor={'inner':0.715, 'outer':1.147}, 
+                    color={'inner':color_i, 'outer':color_o})
+
+
+    for i in range(nverts):
+        c = lkm[i, i]
+        assert(c <= 1 and c >= 0)
+        if c == 1:
+            c = c - 0.00001
+        color_self = cmap(c)
+        _draw_selfloop_arrow(ax, xs_selfloop[i], ys_selfloop[i], 0.15, -180+thetas_selfloop[i], 315, 
+            color_=color_self)
+    
+    for idx, (i, j) in enumerate(zip(xs, ys)):
+        circle = mpatches.Circle((i, j), 0.05, linewidth=3, alpha=1, color=colors[idx])
+        ax.add_patch(circle)
         
         if ax_ is None:
-            plt.figure(figsize=figsize)
-            ax = plt.gca()
+            plt.text(i, j, region[idx], size=35,
+                ha="center", va='center_baseline', color='white', fontname='sans-serif', weight='heavy')
         else:
-            ax = ax_
+            ax.text(i, j, region[idx], size=35,
+                ha="center", va='center_baseline', color='white', fontname='sans-serif', weight='heavy')
 
-        xs, ys, _, _ = _get_vertices(nverts, rad, 0, centerxy)
-        xs_selfloop, ys_selfloop, _, thetas_selfloop = _get_vertices(nverts, rad+0.1, 0, centerxy)
+    if ax_ is None:
+        plt.xlim(0, 1)
+        plt.ylim(0, 1)
+        plt.show()
+    return ax
 
-        for i in range(nverts):
-            a = lkm[i, (i+1)%nverts]
-            b = lkm[(i+1)%nverts, i]
-            assert(a <= 1 and a >= 0 and b <= 1 and b >= 0)
-            if a == 1:
-                a = a - 0.00001
-            if b == 1:
-                b = b - 0.00001
+@staticmethod
+def sankey(lkms, labels, colorlist=None):
+    dfs = []
+    colors = []
+    for idx, lkm in enumerate(lkms):
+        lkm = lkm.T
+        df = pd.DataFrame(lkm)
+        df.index = labels
+        df.columns = labels
+        dfs.append(df)
+        n = df.values.max()
+        vs = (df.values.flatten()/n)**2
+        if colorlist is None:
+            colors.extend([f"rgba(0.0, 0.5, 0.7, {i:.20f})" for i in vs])
+        else:
+            assert(colorlist[idx][-1:] == ')')
+            colors.extend([colorlist[idx][:-1] + f", {i:.20f})" for i in vs])
 
-            color_i = cmap(a)
-            color_o = cmap(b)
-            _add_connection(ax, (xs[i], ys[i]), (xs[(i+1)%nverts], ys[(i+1)%nverts]), 
-                        bidirectional=True, arc=0.25, pushfactor={'inner':0.715, 'outer':1.147}, 
-                        color={'inner':color_i, 'outer':color_o})
+    lno = len(labels)
+    srcblocks = np.repeat(range(lno*len(dfs)), lno)
+    dstblocks = []
+    for i in range(len(dfs)):
+        dstblocks.extend(list(range(lno*(i+1), lno*(i+2)))*lno)
+
+    vals = []
+    for df in dfs:
+        vals.extend(list(df.values.flatten()))
 
 
-        for i in range(nverts):
-            c = lkm[i, i]
-            assert(c <= 1 and c >= 0)
-            if c == 1:
-                c = c - 0.00001
-            color_self = cmap(c)
-            _draw_selfloop_arrow(ax, xs_selfloop[i], ys_selfloop[i], 0.15, -180+thetas_selfloop[i], 315, 
-                color_=color_self)
+    ncols = len(dfs)+1
+    yp = list(np.linspace(0.1, 0.9, len(labels)))*ncols
+    xp = list(np.repeat(np.linspace(0.1, 0.9, ncols), lno))
+
+
+    fig = go.Figure(data=[go.Sankey(
+    node = dict(
+        pad = 15,
+        thickness = 20,
+        line = dict(color = "red", width = 0.5),
+        label = labels*ncols,
+        color = ["darkblue"]*ncols*lno,
+        y=yp,
+        x=xp
+        ),
+        link = dict(
+        source = srcblocks, # indices correspond to labels, eg A1, A2, A1, B1, ...
+        target = dstblocks,
+        value = vals,
+        color=colors
+    ))])
+
+    fig.update_layout(title_text="Basic Sankey Diagram", font_size=10)
+    fig.show(renderer='browser')
+
+
+
         
-        for idx, (i, j) in enumerate(zip(xs, ys)):
-            circle = mpatches.Circle((i, j), 0.05, linewidth=3, alpha=1, color=colors[idx])
-            ax.add_patch(circle)
-            
-            if ax_ is None:
-                plt.text(i, j, region[idx], size=35,
-                    ha="center", va='center_baseline', color='white', fontname='sans-serif', weight='heavy')
-            else:
-                ax.text(i, j, region[idx], size=35,
-                    ha="center", va='center_baseline', color='white', fontname='sans-serif', weight='heavy')
-
-        if ax_ is None:
-            plt.xlim(0, 1)
-            plt.ylim(0, 1)
-            plt.show()
-        return ax

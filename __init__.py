@@ -1,10 +1,10 @@
 class LinkAnalyzer:
     from ._roi import construct_link_matrix, tabulate_links
-    from ._plotting import heatmap, heatmap_linkmatrix, circle_plot, railroad_plot
+    from ._plotting import heatmap, heatmap_linkmatrix, circle_plot, railroad_plot, sankey
     from ._stats import (t_test_between, group_averages_whole, group_norm_averages_whole,
                         group_norm_whole_list, group_norm_hemi_list,
                         group_averages_hemi, group_norm_averages_hemi, get_average_link_matrix)
-    from ._natures import get_natures
+    from ._natures import get_natures, _get_natures
     from ._trf import fit_trfs, subset_trfs_by_region, get_trf_statmap
 
     def __init__(self, experiment, controls, patients, visits, sessions, trials,
