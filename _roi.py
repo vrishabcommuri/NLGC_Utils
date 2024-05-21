@@ -3,6 +3,7 @@ import mne
 import itertools
 import numpy as np
 import pickle
+from tabulate import tabulate
 
 def construct_link_matrix(self):
     link_count = dict() 

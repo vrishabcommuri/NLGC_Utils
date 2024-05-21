@@ -37,7 +37,7 @@ def t_test_between(self, condition1, condition2, status1='C1', status2='C2', hem
                         
                         
             tval, pval = scipy.stats.ttest_ind(a, b)
-            print(f'{source}->{target}: {min(1,len(target_lobes)**2*pval)}')
+            print(f'{source}->{target}: {min(1,len(self.target_lobes)**2*pval)}')
     print('--------------------------------------')
     print('\n')
 
@@ -85,17 +85,23 @@ def group_norm_averages_whole(self, condition1, condition2):
 
     return c1_group_avg, c2_group_avg
 
-def group_norm_whole_list(self, condition1, condition2):
+def group_whole_list(self, condition1, condition2, norm=False):
     c1_group_avg = []
     c2_group_avg = []
     for subject, visit, session, trial in condition1:
-        links_normed = self.conn[f'{subject}{visit}{session}{trial}']
-        c1_group_avg.append(links_normed)
+        if norm:
+            links = self.conn[f'{subject}{visit}{session}{trial}']
+        else:
+            links = self.conn_raw[f'{subject}{visit}{session}{trial}']
+        c1_group_avg.append(links)
     
     count = 0
     for subject, visit, session, trial in condition2:
-        links_normed = self.conn_raw[f'{subject}{visit}{session}{trial}']
-        c2_group_avg.append(links_normed)
+        if norm:
+            links = self.conn[f'{subject}{visit}{session}{trial}']
+        else:
+            links = self.conn_raw[f'{subject}{visit}{session}{trial}']
+        c2_group_avg.append(links)
         
     return c1_group_avg, c2_group_avg
     
@@ -178,7 +184,7 @@ def group_norm_averages_hemi(self, condition1, condition2):
     return c1_group_avg_hemi, c2_group_avg_hemi
 
 
-def group_norm_hemi_list(self, condition1, condition2):
+def group_hemi_list(self, condition1, condition2, norm=False):
     c1_group_avg_hemi = []
     c2_group_avg_hemi = []
     
@@ -186,17 +192,23 @@ def group_norm_hemi_list(self, condition1, condition2):
     for subject, visit, session, trial, hemilist in condition1:
         for srchemi, dsthemi in hemilist:
             hemi_idx = self._get_hemi_idx(srchemi, dsthemi)
-            links_normed = self.conn_hemi[f'{subject}{visit}{session}{trial}'][hemi_idx, :, :]
+            if norm:
+                links = self.conn_hemi[f'{subject}{visit}{session}{trial}'][hemi_idx, :, :]
+            else:
+                links = self.conn_hemi_raw[f'{subject}{visit}{session}{trial}'][hemi_idx, :, :]
             # links for this hemisphere
-            c1_group_avg_hemi.append(links_normed)
+            c1_group_avg_hemi.append(links)
     
             
     ########## c2 ##########
     for subject, visit, session, trial, hemilist in condition2:
         for srchemi, dsthemi in hemilist:
             hemi_idx = self._get_hemi_idx(srchemi, dsthemi)
-            links_normed = self.conn_hemi[f'{subject}{visit}{session}{trial}'][hemi_idx,:, :]
-            c2_group_avg_hemi.append(links_normed)
+            if norm:
+                links = self.conn_hemi[f'{subject}{visit}{session}{trial}'][hemi_idx, :, :]
+            else:
+                links = self.conn_hemi_raw[f'{subject}{visit}{session}{trial}'][hemi_idx, :, :]
+            c2_group_avg_hemi.append(links)
         
     return c1_group_avg_hemi, c2_group_avg_hemi
 
@@ -218,3 +230,18 @@ def get_average_link_matrix(self, condition1, condition2, hemi=False):
     else:
         c1_group_avg_hemi, c2_group_avg_hemi = self.group_averages_hemi(condition1, condition2)
         return c1_group_avg_hemi, c2_group_avg_hemi
+
+
+def condition_to_models(self, condition, norm=False):
+    matrices = []
+    for subject, visit, session, trial in condition:
+        for name, key, model in self.models:
+            if model is None:
+                continue
+        
+            if key == f"{subject}{visit}{session}{trial}":
+                matrices.append(model.get_J_statistics())
+    if norm:
+        matrices = [i/i.sum() for i in matrices]
+    return matrices
+

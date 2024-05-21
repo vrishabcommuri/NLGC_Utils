@@ -7,6 +7,9 @@ import numpy as np
 from mne_connectivity import viz
 import plotly.graph_objects as go
 import pandas as pd
+import matplotlib.collections as mcoll
+from datashader.bundling import hammer_bundle
+import eelbrain as eel
 
 ################################################################################
 # Heatmap
@@ -446,5 +449,223 @@ def sankey(lkms, labels, colorlist=None):
     fig.show(renderer='browser')
 
 
+def colorline(
+    ax, x, y, z=None, cmap=plt.get_cmap('copper'), norm=plt.Normalize(0.0, 1.0),
+        linewidth=1, alpha=0.025, color=None):
+    """
+    http://nbviewer.ipython.org/github/dpsanders/matplotlib-examples/blob/master/colorline.ipynb
+    http://matplotlib.org/examples/pylab_examples/multicolored_line.html
+    Plot a colored line with coordinates x and y
+    Optionally specify colors in the array z
+    Optionally specify a colormap, a norm function and a line width
+    """
 
+    # Default colors equally spaced on [0,1]:
+    if z is None:
+        z = np.linspace(0.0, 1.0, len(x))
+
+    # Special case if a single number:
+    if not hasattr(z, "__iter__"):  # to check for numerical input -- this is a hack
+        z = np.array([z])
+
+    z = np.asarray(z)
+
+    segments = make_segments(x, y)
+    if color is None:
+        lc = mcoll.LineCollection(segments, array=z, cmap=cmap, norm=norm,
+                              linewidth=linewidth, alpha=1)
+    else:
+        lc = mcoll.LineCollection(segments, array=z, colors=color, norm=norm,
+                              linewidth=linewidth, alpha=alpha)
+
+    ax.add_collection(lc)
+
+    return lc
+
+def make_segments(x, y):
+    """
+    Create list of line segments from x and y coordinates, in the correct format
+    for LineCollection: an array of the form numlines x (points per line) x 2 (x
+    and y) array
+    """
+
+    points = np.array([x, y]).T.reshape(-1, 1, 2)
+    segments = np.concatenate([points[:-1], points[1:]], axis=1)
+    return segments
+
+
+def jitter_points(df_edges, df_coords):
+    targets = df_edges.target.tolist() 
+    sources = df_edges.source.tolist() 
+
+    jittered_coords = []
+    jittered_edges = []
+
+    c1 = 0
+    c2 = 1
+    for tprefix, sprefix in zip(targets, sources):
+        factor = 125
+        txjitter ,= np.clip(np.random.normal(0.5, 0.25, 1), 0.01, 0.99)/factor
+        tyjitter ,= np.clip(np.random.normal(0.5, 0.25, 1), 0.01, 0.99)/factor
+        sxjitter ,= np.clip(np.random.normal(0.5, 0.25, 1), 0.01, 0.99)/factor
+        syjitter ,= np.clip(np.random.normal(0.5, 0.25, 1), 0.01, 0.99)/factor
+
+        jittered_edges.append([c1, c2])
+
+        c1 += 2
+        c2 += 2
+
+        tx_center ,= df_coords[df_coords.name == int(tprefix)].x.values
+        ty_center ,= df_coords[df_coords.name == int(tprefix)].y.values
+        sx_center ,= df_coords[df_coords.name == int(sprefix)].x.values
+        sy_center ,= df_coords[df_coords.name == int(sprefix)].y.values
+
+        jittered_coords.append([c1, tx_center+(txjitter-(0.5/factor)), ty_center+(tyjitter-(0.5/factor))])
+        jittered_coords.append([c2, sx_center+(sxjitter-(0.5/factor)), sy_center+(syjitter-(0.5/factor))])
+
+    df_coords = pd.DataFrame(jittered_coords)
+    df_edges = pd.DataFrame(jittered_edges)
+
+    df_coords.columns = ["name", "x", "y"]
+    df_edges.columns = ["target", "source"]
+    return df_edges, df_coords
+
+
+def _hammer_plot(self, adjb, x, y, ax, xlim=(-0.1, 0.1), ylim=(-0.1, 0.1), 
+                linecolors='uniform', split_source_sink=False, 
+               jitter=False, adjb2=None, subject='fsaverage'):
+    if subject == 'fsaverage':
+        self.experiment.e.set(subject=subject, match=False)
+    else:
+        self.experiment.e.set(subject=subject)
+    ss = self.experiment.e.load_src(src='ico-1')
+    ax.plot(ss[0]['rr'][:, x], ss[0]['rr'][:, y], color='black')
+    ax.plot(ss[1]['rr'][:, x], ss[1]['rr'][:, y], color='black')
+    s = eel.SourceSpace.from_mne_source_spaces(ss, 'ico-1', self.subjects_dir, 'aparc')
+
+    xyproj = s.coordinates[:, [x, y]]
+    df_coords = pd.DataFrame(xyproj).reset_index()
+    
+    if adjb2 is not None:
+        # combine two link matrices to build a common graph
+        # now df_edges will contain edges from both link matrices
+        # therefore the total derived graph will look the same 
+        # for both. we can then color one or the other later
+        df_edges = pd.DataFrame(np.where(adjb + adjb2)).T
+    else:
+        df_edges = pd.DataFrame(np.where(adjb)).T
+
+    df_coords.columns = ["name", "x", "y"]
+    df_edges.columns = ["target", "source"]
+    df_edges_old = df_edges
+    
+    if jitter:
+        df_edges, df_coords = jitter_points(df_edges, df_coords)
+    
+    
+    if split_source_sink:
+        assert(jitter == False)
+        df_coords2 = df_coords.copy()
+        df_coords2.name += 84
+        df_coords2.x += 0.005
+        df_coords = pd.concat([df_coords, df_coords2]).reset_index(drop=True)
+        df_edges.target += 84
+
+    vmax = np.abs(adjb).max()
+    
+    df_e = pd.DataFrame(np.where(adjb)).T
+    df_e.columns = ["target", "source"]
+
+    hb = hammer_bundle(df_coords, df_edges, initial_bandwidth=0.3, decay=0.7)
+    
+    cutoffs = [0]+hb[np.isnan(hb['x'])].index.values.tolist()
+    
+
+    for dst, src in zip(df_e.target.values, df_e.source.values):
+        sidx = df_edges[(df_edges_old.target == dst) & (df_edges_old.source == src)].index.values[0]
+        if sidx == len(cutoffs) - 1:
+            break
+        eidx = sidx+1
+        start = cutoffs[sidx]
+        end = cutoffs[eidx]
         
+        if linecolors == 'uniform':
+            ax.plot(hb['x'].values[start:end], hb['y'].values[start:end], color='orange')
+        elif linecolors == 'binary':
+            ax.plot(hb['x'].values[start:end-((end-start)//2)], hb['y'].values[start:end-((end-start)//2)], color='orange')
+            ax.plot(hb['x'].values[start+((end-start)//2):end], hb['y'].values[start+((end-start)//2):end], color='blue')
+        elif linecolors == 'gradient':
+            colorline(ax, hb['x'].values[start:end], hb['y'].values[start:end], cmap='PiYG_r')
+        elif linecolors == 'translucent':
+            colorline(ax, hb['x'].values[start:end], hb['y'].values[start:end], color='tab:orange', alpha=0.2)
+        elif linecolors == 'translucentweighted':
+            curr_link_val = (adjb[dst, src]/vmax)/5
+            colorline(ax, hb['x'].values[start:end], hb['y'].values[start:end], color='tab:orange', alpha=curr_link_val)
+        elif linecolors == 'difference':
+            curr_link_val = (adjb[dst, src]/vmax)/2
+            if curr_link_val < 0:
+                colorline(ax, hb['x'].values[start:end], hb['y'].values[start:end], color='tab:blue', alpha=abs(curr_link_val))
+            else:
+                colorline(ax, hb['x'].values[start:end], hb['y'].values[start:end], color='tab:red', alpha=curr_link_val)
+        elif linecolors == 'difference_halfline':
+            curr_link_val = (adjb[dst, src]/vmax)/2
+            if curr_link_val < 0:
+                colorline(ax, hb['x'].values[start:end-((end-start)//2)], hb['y'].values[start:end-((end-start)//2)], color='tab:blue', alpha=abs(curr_link_val))
+            else:
+                colorline(ax, hb['x'].values[start:end-((end-start)//2)], hb['y'].values[start:end-((end-start)//2)], color='tab:red', alpha=curr_link_val)
+        else:
+            raise Exception(f"linecolors {linecolors} not supported")
+            
+            
+    if jitter == False:
+        ax.plot(df_coords['x'][:84], df_coords['y'][:84], '.', color='red')
+        ax.plot(df_coords['x'][84:], df_coords['y'][84:], '.', color='blue')
+
+    ax.set_xlim(xlim[0], xlim[1])
+    ax.set_ylim(ylim[0], ylim[1])
+
+    return df_edges, df_coords, hb
+
+
+def hammer_plot_matrix(self, mat1, mat2=None, diff=False, **kwargs):
+    fig, ax = plt.subplots(1, 3, figsize=(30, 10), layout="compressed")
+
+    views = [(0, 1), (1, 2), (0, 2)]
+    xlims = [(-0.1, 0.1), (-0.1, 0.07), (-0.1, 0.1)]
+    ylims = [(-0.115, 0.085), (-0.075, 0.1), (-0.075, 0.1)]
+
+    if mat2 is not None:
+        adjb2 = (mat1+mat2)/2
+    else:
+        adjb2 = None
+
+    if diff:
+        if mat2 is None:
+            mat3 = mat1
+        else:
+            mat3 = mat1 - mat2
+    else:
+        mat3 = mat1
+    
+
+    for i in range(3):
+        x, y = views[i]
+        
+        df_edges, df_coords, hb = self._hammer_plot(mat3, x, y, ax[i], xlims[i], ylims[i], 
+                                              adjb2=adjb2, **kwargs)
+        ax[i].axis('off')
+        
+    fig.subplots_adjust(wspace=0.0)
+    plt.show()
+
+
+def hammer_plot(self, condition1, condition2=None, diff=False, **kwargs):
+    mat1 = np.mean(self.condition_to_models(condition1, norm=True), axis=0)
+    if condition2 is None:
+        mat2 = None
+    else:
+        mat2 = np.mean(self.condition_to_models(condition2, norm=True), axis=0)
+
+    self.hammer_plot_matrix(mat1, mat2, diff, **kwargs)
+
+    
