@@ -189,7 +189,7 @@ def patch_to_ROI(src_target, labels):
 
 
 def get_patch_idxs_in_region(self, subject, region, lobe_mapping, verbose):
-    labels = mne.read_labels_from_annot(subject, parc='aparc', subjects_dir='../../../data/StrokeTest/mri/')
+    labels = mne.read_labels_from_annot(subject, parc='aparc', subjects_dir=self.subjects_dir)
     label_names = [label.name for label in labels]
 
     lobe_labels = []
