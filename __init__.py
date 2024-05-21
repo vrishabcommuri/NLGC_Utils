@@ -1,5 +1,5 @@
 class LinkAnalyzer:
-    from ._roi import construct_link_matrix, tabulate_links
+    from ._roi import construct_link_matrix, tabulate_links, lkm_to_matrix, get_patch_idxs_in_region
     from ._plotting import (heatmap, heatmap_linkmatrix, circle_plot, railroad_plot, 
                            sankey, hammer_plot, hammer_plot_matrix, _hammer_plot)
     from ._stats import (t_test_between, group_averages_whole, group_norm_averages_whole,

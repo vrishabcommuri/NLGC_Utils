@@ -4,6 +4,7 @@ import itertools
 import numpy as np
 import pickle
 from tabulate import tabulate
+import matplotlib.pyplot as plt
 
 def construct_link_matrix(self):
     link_count = dict() 
@@ -151,3 +152,134 @@ def tabulate_links(self, percentages=True, verbose=True):
     self.conn = conn
     self.conn_raw = conn_raw
     return group_table
+
+
+def patch_to_ROI(src_target, labels):
+    patch_to_labels = []
+
+    for hemi_idx in [0, 1]:
+        label_vert_dict = {label.name: label.get_vertices_used(src_target[hemi_idx]['vertno']) for label in
+                           labels[hemi_idx::2]}
+        # used_vert = np.sort(np.concatenate(tuple(label_vert_dict.values())))
+        for vert in src_target[hemi_idx]['vertno']:
+            match = None
+            for key, item in label_vert_dict.items():
+                if vert in item:
+                    match = key
+            patch_idx = np.where(src_target[hemi_idx]['vertno'] == vert)
+            this_patch_info = []
+
+            if match != None:
+                this_patch_info = [(match, 1.0)]
+            else:
+                neighbours_assignment = np.asanyarray(
+                    [len(label.get_vertices_used(src_target[hemi_idx]['pinfo'][patch_idx[0][0]]))
+                     for label in labels[hemi_idx::2]], dtype=float)
+                if np.all(neighbours_assignment == 0.0):
+                    import random
+                    rnd_label = random.randint(0, len(labels) // 2 - 1)
+                    this_patch_info.append((labels[rnd_label * 2 + hemi_idx].name, 1.0))
+                else:
+                    neighbours_assignment /= np.sum(neighbours_assignment)
+                    for label_idx, label in enumerate(labels[hemi_idx::2]):
+                        if neighbours_assignment[label_idx] != 0.0:
+                            this_patch_info.append((label.name, neighbours_assignment[label_idx]))
+            patch_to_labels.append(this_patch_info)
+    return patch_to_labels
+
+
+def get_patch_idxs_in_region(self, subject, region, lobe_mapping, verbose):
+    labels = mne.read_labels_from_annot(subject, parc='aparc', subjects_dir='../../../data/StrokeTest/mri/')
+    label_names = [label.name for label in labels]
+
+    lobe_labels = []
+    target_lobes = list(lobe_mapping.keys())
+
+    for lobe_idx, lobe_ in enumerate(target_lobes):
+        for hemi_idx, hemi in enumerate(['lh', 'rh']):
+            temp_label = []
+            for ROI_idx, ROI in enumerate(lobe_mapping[lobe_]):
+                if ROI_idx == 0:
+                    temp_label = labels[label_names.index(f"{ROI}-{hemi}")]
+                else:
+                    temp_label += labels[label_names.index(f"{ROI}-{hemi}")]
+            temp_label.name = f"{lobe_}-{hemi}"
+            lobe_labels.append(temp_label)
+
+    link_count = dict()
+    for lobe_src, lobe_tar in itertools.product(target_lobes, repeat=2):
+        link_count[f"{lobe_src}->{lobe_tar}"] = np.zeros(4)
+    
+    if subject == 'fsaverage':
+        self.experiment.e.set(subject=subject, match=False)
+    else:
+        self.experiment.e.set(subject=subject)
+    src_target = self.experiment.e.load_src(src='ico-1')
+
+    patch_to_labels = patch_to_ROI(src_target, lobe_labels)
+    idxs = []
+    for idx, i in enumerate(patch_to_labels):
+        # this patch straddles two or more regions, 
+        # don't consider it for the sake of simplicity
+        if i[0][1] != 1:
+            continue
+
+        # only want indices for this region
+        if i[0][0].split('-')[0] != region:
+            continue
+        if verbose:
+            print(idx, i)
+        idxs.append(idx)
+    return idxs
+
+
+def lkm_to_matrix(self, lkm, verbose=False):
+    d = dict()
+    for reg in list(self.lobe_mapping.keys()):
+        idxs = self.get_patch_idxs_in_region("fsaverage", reg, self.lobe_mapping, verbose)
+        d[reg] = idxs
+
+    A = np.zeros((84,84))
+
+
+    for i in range(84):
+        for j in range(84):
+            if i < 42:
+                hemi1 = 'lh'
+            else:
+                hemi1 = 'rh'
+            if j < 42:
+                hemi2 = 'lh'
+            else:
+                hemi2 = 'rh'
+
+            reg1 = None
+            reg2 = None
+            for reg_idx, reg in enumerate(list(self.lobe_mapping.keys())):
+                if i in d[reg]:
+                    reg1 = reg_idx
+                if j in d[reg]:
+                    reg2 = reg_idx
+
+            if reg1 is None or reg2 is None:
+                continue
+
+            idx = self._get_hemi_idx(hemi1, hemi2)
+            val = lkm[idx][reg2, reg1]
+
+            A[j, i] = val
+
+    
+    remap = []
+    for key in list(self.lobe_mapping.keys()):
+        remap.extend(d[key])
+    remap = remap + list(np.setdiff1d(list(range(84)), remap))
+    
+    if verbose:
+        plt.imshow(A)
+        plt.show()
+        plt.imshow(A[remap, :][:, remap])
+        plt.show()
+    return A
+        
+
