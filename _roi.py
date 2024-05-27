@@ -1,4 +1,4 @@
-from ._supp_funcs import get_num_links
+from ._supp_funcs import get_num_links, patch_to_ROI
 import mne
 import itertools
 import numpy as np
@@ -154,40 +154,6 @@ def tabulate_links(self, percentages=True, verbose=True):
     return group_table
 
 
-def patch_to_ROI(src_target, labels):
-    patch_to_labels = []
-
-    for hemi_idx in [0, 1]:
-        label_vert_dict = {label.name: label.get_vertices_used(src_target[hemi_idx]['vertno']) for label in
-                           labels[hemi_idx::2]}
-        # used_vert = np.sort(np.concatenate(tuple(label_vert_dict.values())))
-        for vert in src_target[hemi_idx]['vertno']:
-            match = None
-            for key, item in label_vert_dict.items():
-                if vert in item:
-                    match = key
-            patch_idx = np.where(src_target[hemi_idx]['vertno'] == vert)
-            this_patch_info = []
-
-            if match != None:
-                this_patch_info = [(match, 1.0)]
-            else:
-                neighbours_assignment = np.asanyarray(
-                    [len(label.get_vertices_used(src_target[hemi_idx]['pinfo'][patch_idx[0][0]]))
-                     for label in labels[hemi_idx::2]], dtype=float)
-                if np.all(neighbours_assignment == 0.0):
-                    import random
-                    rnd_label = random.randint(0, len(labels) // 2 - 1)
-                    this_patch_info.append((labels[rnd_label * 2 + hemi_idx].name, 1.0))
-                else:
-                    neighbours_assignment /= np.sum(neighbours_assignment)
-                    for label_idx, label in enumerate(labels[hemi_idx::2]):
-                        if neighbours_assignment[label_idx] != 0.0:
-                            this_patch_info.append((label.name, neighbours_assignment[label_idx]))
-            patch_to_labels.append(this_patch_info)
-    return patch_to_labels
-
-
 def get_patch_idxs_in_region(self, subject, region, lobe_mapping, verbose):
     labels = mne.read_labels_from_annot(subject, parc='aparc', subjects_dir=self.subjects_dir)
     label_names = [label.name for label in labels]
@@ -280,6 +246,6 @@ def lkm_to_matrix(self, lkm, verbose=False):
         plt.show()
         plt.imshow(A[remap, :][:, remap])
         plt.show()
-    return A
+    return A, remap
         
 

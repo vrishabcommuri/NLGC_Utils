@@ -113,11 +113,10 @@ def fdr_control(d_all, k, alpha, method='arithmetic'):
 
 def patch_to_ROI(src_target, labels):
     patch_to_labels = []
-
     for hemi_idx in [0, 1]:
         label_vert_dict = {label.name: label.get_vertices_used(src_target[hemi_idx]['vertno']) for label in
                            labels[hemi_idx::2]}
-        # used_vert = np.sort(np.concatenate(tuple(label_vert_dict.values())))
+
         for vert in src_target[hemi_idx]['vertno']:
             match = None
             for key, item in label_vert_dict.items():
@@ -132,16 +131,30 @@ def patch_to_ROI(src_target, labels):
                 neighbours_assignment = np.asanyarray(
                     [len(label.get_vertices_used(src_target[hemi_idx]['pinfo'][patch_idx[0][0]]))
                      for label in labels[hemi_idx::2]], dtype=float)
+                
+
                 if np.all(neighbours_assignment == 0.0):
-                    import random
-                    rnd_label = random.randint(0, len(labels) // 2 - 1)
-                    this_patch_info.append((labels[rnd_label * 2 + hemi_idx].name, 1.0))
-                else:
-                    neighbours_assignment /= np.sum(neighbours_assignment)
-                    for label_idx, label in enumerate(labels[hemi_idx::2]):
-                        if neighbours_assignment[label_idx] != 0.0:
-                            this_patch_info.append((label.name, neighbours_assignment[label_idx]))
+                    # rare case where no neighbors were found, so none of these vertices 
+                    # can be mapped to a label. in that case, find the next nearest patch 
+                    # and declare that the vertices in this patch belong to that one.
+                    nuse = src_target[1]['nuse']
+                    dists = src_target[1]['dist'][:nuse, :nuse].todense() + np.eye(nuse)
+                    current_patch_vert = patch_idx[0][0]
+                    
+                    neighbors = np.array(np.argsort(dists[current_patch_vert]))[0]
+                    for new_patch_vert in neighbors:
+                        neighbours_assignment = np.asanyarray(
+                            [len(label.get_vertices_used(src_target[hemi_idx]['pinfo'][new_patch_vert]))
+                             for label in labels[hemi_idx::2]], dtype=float)
+                        if not np.all(neighbours_assignment == 0.0):
+                            break 
+                    
+                neighbours_assignment /= np.sum(neighbours_assignment)
+                for label_idx, label in enumerate(labels[hemi_idx::2]):
+                    if neighbours_assignment[label_idx] != 0.0:
+                        this_patch_info.append((label.name, neighbours_assignment[label_idx]))
             patch_to_labels.append(this_patch_info)
+            
     return patch_to_labels
 
 

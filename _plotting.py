@@ -533,7 +533,8 @@ def jitter_points(df_edges, df_coords):
 
 def _hammer_plot(self, adjb, x, y, ax, xlim=(-0.1, 0.1), ylim=(-0.1, 0.1), 
                 linecolors='uniform', split_source_sink=False, 
-               jitter=False, adjb2=None, subject='fsaverage'):
+               jitter=False, adjb2=None, subject='fsaverage', 
+               initial_bandwidth=0.3, decay=0.7):
     if subject == 'fsaverage':
         self.experiment.e.set(subject=subject, match=False)
     else:
@@ -576,7 +577,7 @@ def _hammer_plot(self, adjb, x, y, ax, xlim=(-0.1, 0.1), ylim=(-0.1, 0.1),
     df_e = pd.DataFrame(np.where(adjb)).T
     df_e.columns = ["target", "source"]
 
-    hb = hammer_bundle(df_coords, df_edges, initial_bandwidth=0.3, decay=0.7)
+    hb = hammer_bundle(df_coords, df_edges, initial_bandwidth=initial_bandwidth, decay=decay)
     
     cutoffs = [0]+hb[np.isnan(hb['x'])].index.values.tolist()
     
