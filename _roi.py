@@ -106,6 +106,8 @@ def tabulate_links(self, percentages=True, verbose=True):
                         this_row.append(key)
                         this_subject_total = 0
                         for subject in subject_vec:
+                            if verbose >= 2:
+                                print(subject_vec, visit_idx, session_idx, trial_idx)
                             this_link_count = self.link_count[f"{subject};{key}"][visit_idx][session_idx][trial_idx].sum() 
 
                             # this_con = np.zeros((len(target_lobes), len(target_lobes)))
@@ -114,6 +116,8 @@ def tabulate_links(self, percentages=True, verbose=True):
                             this_con_hemi_raw = np.zeros((4, len(self.target_lobes), len(self.target_lobes)))
                             for j, source in enumerate(self.target_lobes):
                                 for i, target in enumerate(self.target_lobes):
+                                    if verbose >= 3:
+                                        print(f'checking link {j}->{i}')
                                     if self.link_count[f"{subject};total"][visit_idx][session_idx][trial_idx].sum() != 0:
                                         this_con_hemi[:, i, j] = \
                                         self.link_count[f"{subject};{source}->{target}"][visit_idx][session_idx][trial_idx]\
@@ -137,7 +141,7 @@ def tabulate_links(self, percentages=True, verbose=True):
         group_table.append(link_tables)
 
     for group_idx, subject_vec in enumerate([self.CONTROLS, self.PATIENTS]):
-        status = 'patient' if subject_vec[0] in self.experiment.PATIENTS else 'control'
+        status = 'patient' if subject_vec[0] in self.PATIENTS else 'control'
         if verbose:
             print('*'+status+'*\n')
         for visit_idx, visit in enumerate(self.visits):
