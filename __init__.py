@@ -1,18 +1,19 @@
 class LinkAnalyzer:
-    from ._roi import construct_link_matrix, tabulate_links, lkm_to_matrix, get_patch_idxs_in_region
+    from ._roi import (construct_link_matrix, lkm_to_matrix, 
+                       partition, unpartition, reflect)
     from ._plotting import (heatmap, heatmap_linkmatrix, circle_plot, railroad_plot, 
                            sankey, hammer_plot, hammer_plot_matrix, _hammer_plot)
-    from ._stats import (t_test_between, group_averages_whole, group_norm_averages_whole,
-                        group_whole_list, group_hemi_list,
-                        group_averages_hemi, group_norm_averages_hemi, get_average_link_matrix, 
-                        condition_to_models)
+    from ._stats import (group_averages_whole, group_norm_averages_whole,
+                        group_averages_hemi, group_norm_averages_hemi, 
+                        condition_to_models, _condition_average, _hemi_average)
     from ._natures import get_natures, _get_natures
     from ._trf import fit_trfs, subset_trfs_by_region, get_trf_statmap
 
     def __init__(self, experiment, controls, patients, visits, sessions, trials,
                 file_patterns="./Results/[{subject}]-[visit={visit}]-[beta].p",
                 lobe_mapping=None, subjects_dir=None, exclusions=None,
-                minlinkcount=0, maxlinkcount=84*84):
+                minlinkcount=0, maxlinkcount=84*84, force_nonzero_trials=False, 
+                reflect_subs=[], noise_model_seed=0, n_noise_models=0):
         self.experiment = experiment
         if not exclusions is None:
             controls = [i for i in controls if i not in exclusions]
@@ -35,8 +36,16 @@ class LinkAnalyzer:
         self.conn_hemi = None
         self.conn_raw = None
         self.conn_hemi_raw = None
+        self.force_nonzero_trials = force_nonzero_trials
         
         self.models = []
+        self.models_transform = []
+        self.noise_model_seed = int(noise_model_seed)
+        self.n_noise_models = int(n_noise_models)
+        self.fsaverage_ico_morph = None
+        self.fsaverage_anat_morph = None
+
+        self.reflect_subs = reflect_subs
         
         self.subjects_dir = subjects_dir
         if self.subjects_dir is None:
@@ -85,14 +94,14 @@ class LinkAnalyzer:
             hemi_idx = 0
         return hemi_idx
     
-    @staticmethod
-    def _check_hemis(condition):
-        allhemis = [('lh', 'lh'), ('rh', 'rh'), ('lh', 'rh'), ('rh', 'lh')]
-        newcondition = []
+    # @staticmethod
+    # def _check_hemis(condition):
+    #     allhemis = [('lh', 'lh'), ('rh', 'rh'), ('lh', 'rh'), ('rh', 'lh')]
+    #     newcondition = []
         
-        for v in condition:
-            if len(v) != 5 or v[4] is None:
-                newcondition.append([v[0], v[1], v[2], v[3], allhemis])
-            else:
-                newcondition.append(v)
-        return newcondition
+    #     for v in condition:
+    #         if len(v) != 5 or v[4] is None:
+    #             newcondition.append([v[0], v[1], v[2], v[3], allhemis])
+    #         else:
+    #             newcondition.append(v)
+    #     return newcondition

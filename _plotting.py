@@ -17,39 +17,65 @@ import eelbrain as eel
 
 def heatmap_linkmatrix(self, lkm1, lkm2, status1='C1', status2='C2', hemi=False, 
                      overlay_nums=False, vmin=0, vmax=1, diffvmin=-1, diffvmax=1, 
-                     figsize=(10, 3), hemimapping={'lh':'lh', 'rh':'rh'}):
+                     figsize=(10, 3), hemimapping={'lh':'lh', 'rh':'rh'}, cbar1scaling=None, 
+                     cbar2scaling=None, rotate_labels=False):
     if hemi == False:
         c1_group_avg = np.copy(lkm1).T
         c2_group_avg = np.copy(lkm2).T
 
         fig, ax = plt.subplots(1, 3, figsize=figsize)
 
-        im = ax[0].imshow(c1_group_avg, vmin=vmin, vmax=vmax)
+        if cbar1scaling is not None:
+            im = ax[0].imshow(c1_group_avg, norm=cbar1scaling)
+        else:
+            im = ax[0].imshow(c1_group_avg, vmin=vmin, vmax=vmax)
+
         ax[0].set_title(f"{status1}")
-        ax[0].set_xticks(list(range(len(self.target_lobes))), self.target_lobes)
+
+        if rotate_labels:
+            ax[0].set_xticks(list(range(len(self.target_lobes))), self.target_lobes, rotation='vertical')
+        else:
+            ax[0].set_xticks(list(range(len(self.target_lobes))), self.target_lobes)
         ax[0].set_yticks(list(range(len(self.target_lobes))), self.target_lobes)
+        
         if overlay_nums == True:
             for srcidx, source in enumerate(self.target_lobes):
                 for dstidx, target in enumerate(self.target_lobes):
                     ax[0].text(srcidx, dstidx, 
                         round(c1_group_avg[dstidx, srcidx], 2), ha="center", va="center", color="w")
 
+        if cbar1scaling is not None:
+            ax[1].imshow(c2_group_avg, norm=cbar1scaling)
+        else:
+            ax[1].imshow(c2_group_avg, vmin=vmin, vmax=vmax)
 
-        ax[1].imshow(c2_group_avg, vmin=vmin, vmax=vmax)
         ax[1].set_title(f"{status2}")
-        ax[1].set_xticks(list(range(len(self.target_lobes))), self.target_lobes)
+        
+        if rotate_labels:
+            ax[1].set_xticks(list(range(len(self.target_lobes))), self.target_lobes, rotation='vertical')
+        else:
+            ax[1].set_xticks(list(range(len(self.target_lobes))), self.target_lobes)
         ax[1].set_yticks(list(range(len(self.target_lobes))), self.target_lobes)
+        
         if overlay_nums == True:
             for srcidx, source in enumerate(self.target_lobes):
                 for dstidx, target in enumerate(self.target_lobes):
                     ax[1].text(srcidx, dstidx, 
                         round(c2_group_avg[dstidx, srcidx], 2), ha="center", va="center", color="w")
 
+        if cbar2scaling is not None:
+            im2 = ax[2].imshow(c1_group_avg - c2_group_avg, cmap='seismic', norm=cbar2scaling)
+        else:
+            im2 = ax[2].imshow(c1_group_avg - c2_group_avg, vmin=diffvmin, vmax=diffvmax, cmap='seismic')
 
-        im2 = ax[2].imshow(c1_group_avg - c2_group_avg, vmin=diffvmin, vmax=diffvmax, cmap='seismic')
         ax[2].set_title(f"{status1}-{status2}")
-        ax[2].set_xticks(list(range(len(self.target_lobes))), self.target_lobes)
+        
+        if rotate_labels:
+            ax[2].set_xticks(list(range(len(self.target_lobes))), self.target_lobes, rotation='vertical')
+        else:
+            ax[2].set_xticks(list(range(len(self.target_lobes))), self.target_lobes)
         ax[2].set_yticks(list(range(len(self.target_lobes))), self.target_lobes)
+        
         if overlay_nums == True:
             for srcidx, source in enumerate(self.target_lobes):
                 for dstidx, target in enumerate(self.target_lobes):
@@ -78,38 +104,66 @@ def heatmap_linkmatrix(self, lkm1, lkm2, status1='C1', status2='C2', hemi=False,
         for srchemi, dsthemi, i, j in [('lh', 'lh', 0, 0), ('rh', 'rh', 1, 1), 
                                         ('lh', 'rh', 0, 1), ('rh', 'lh', 1, 0)]:
             hemi_idx = self._get_hemi_idx(srchemi, dsthemi)
-            im = ax[i, j].imshow(c1_group_avg_hemi[hemi_idx], vmin=vmin, vmax=vmax)
+            if cbar1scaling is not None:
+                im = ax[i, j].imshow(c1_group_avg_hemi[hemi_idx], norm=cbar1scaling)
+            else:
+                im = ax[i, j].imshow(c1_group_avg_hemi[hemi_idx], vmin=vmin, vmax=vmax)
+
             s = hemimapping[srchemi]
             d = hemimapping[dsthemi]
+            
             ax[i, j].set_title(f"{status1}:{s}->{d}")
-            ax[i, j].set_xticks(list(range(len(self.target_lobes))), self.target_lobes)
+
+            if rotate_labels:
+                ax[i, j].set_xticks(list(range(len(self.target_lobes))), self.target_lobes, rotation='vertical')
+            else:
+                ax[i, j].set_xticks(list(range(len(self.target_lobes))), self.target_lobes)
             ax[i, j].set_yticks(list(range(len(self.target_lobes))), self.target_lobes)
+            
             if overlay_nums == True:
                 for srcidx, source in enumerate(self.target_lobes):
                     for dstidx, target in enumerate(self.target_lobes):
                         ax[i, j].text(srcidx, dstidx, 
                             round(c1_group_avg_hemi[hemi_idx, dstidx, srcidx],2), ha="center", va="center", color="w")
 
-            ax[i, j+2].imshow(c2_group_avg_hemi[hemi_idx], vmin=vmin, vmax=vmax)
+            if cbar1scaling is not None:
+                ax[i, j+2].imshow(c2_group_avg_hemi[hemi_idx], norm=cbar1scaling)
+            else:
+                ax[i, j+2].imshow(c2_group_avg_hemi[hemi_idx], vmin=vmin, vmax=vmax)
+            
             s = hemimapping[srchemi]
             d = hemimapping[dsthemi]
             ax[i, j+2].set_title(f"{status2}:{s}->{d}")
-            ax[i, j+2].set_xticks(list(range(len(self.target_lobes))), self.target_lobes)
+            
+            if rotate_labels:
+                ax[i, j+2].set_xticks(list(range(len(self.target_lobes))), self.target_lobes, rotation='vertical')
+            else:
+                ax[i, j+2].set_xticks(list(range(len(self.target_lobes))), self.target_lobes)
             ax[i, j+2].set_yticks(list(range(len(self.target_lobes))), self.target_lobes)
+            
             if overlay_nums == True:
                 for srcidx, source in enumerate(self.target_lobes):
                     for dstidx, target in enumerate(self.target_lobes):
                         ax[i, j+2].text(srcidx, dstidx, 
                             round(c2_group_avg_hemi[hemi_idx, dstidx, srcidx],2), ha="center", va="center", color="w")
-
-            im2 = ax[i, j+4].imshow(c1_group_avg_hemi[hemi_idx] \
+            if cbar2scaling is not None:
+                im2 = ax[i, j+4].imshow(c1_group_avg_hemi[hemi_idx] \
+                                - c2_group_avg_hemi[hemi_idx],
+                                cmap='seismic', norm=cbar2scaling)
+            else:
+                im2 = ax[i, j+4].imshow(c1_group_avg_hemi[hemi_idx] \
                                 - c2_group_avg_hemi[hemi_idx],
                                 vmin=diffvmin, vmax=diffvmax, cmap='seismic')
             s = hemimapping[srchemi]
             d = hemimapping[dsthemi]
             ax[i, j+4].set_title(f"{status1}-{status2}:{s}->{d}")
-            ax[i, j+4].set_xticks(list(range(len(self.target_lobes))), self.target_lobes)
+
+            if rotate_labels:
+                ax[i, j+4].set_xticks(list(range(len(self.target_lobes))), self.target_lobes, rotation='vertical')
+            else:
+                ax[i, j+4].set_xticks(list(range(len(self.target_lobes))), self.target_lobes)
             ax[i, j+4].set_yticks(list(range(len(self.target_lobes))), self.target_lobes)
+            
             if overlay_nums == True:
                 for srcidx, source in enumerate(self.target_lobes):
                     for dstidx, target in enumerate(self.target_lobes):
@@ -128,15 +182,9 @@ def heatmap_linkmatrix(self, lkm1, lkm2, status1='C1', status2='C2', hemi=False,
     
 
 def heatmap(self, condition1, condition2, status1='C1', status2='C2', hemi=False, norm=False,
-                     overlay_nums=False, vmin=0, vmax=1, diffvmin=-1, diffvmax=1, figsize=(10, 3), 
-                     hemimapping={'lh':'lh', 'rh':'rh'}):
-    if hemi == True:
-        condition1, condition2 = self._check_hemis(condition1), self._check_hemis(condition2)
-        
-    if self.conn is None:
-        self.tabulate_links(verbose=False)
-
-
+                     overlay_nums=False, vmin=0, vmax=1, diffvmin=-1, diffvmax=1,
+                     figsize=(10, 3), hemimapping={'lh':'lh', 'rh':'rh'}, cbar1scaling=None, 
+                     cbar2scaling=None, rotate_labels=False):
     ###################################
     if hemi == False:
         if norm:
@@ -145,7 +193,9 @@ def heatmap(self, condition1, condition2, status1='C1', status2='C2', hemi=False
             c1_group_avg, c2_group_avg = self.group_averages_whole(condition1, condition2)
 
         self.heatmap_linkmatrix(c1_group_avg, c2_group_avg, status1, status2, hemi, 
-                     overlay_nums, vmin, vmax, diffvmin, diffvmax, figsize, hemimapping)
+                     overlay_nums, vmin, vmax, diffvmin, diffvmax, figsize, hemimapping, 
+                     cbar1scaling, cbar2scaling, rotate_labels)
+        return c1_group_avg, c2_group_avg
     else:
         if norm:
             c1_group_avg_hemi, c2_group_avg_hemi = self.group_norm_averages_hemi(condition1, condition2)
@@ -153,7 +203,9 @@ def heatmap(self, condition1, condition2, status1='C1', status2='C2', hemi=False
             c1_group_avg_hemi, c2_group_avg_hemi = self.group_averages_hemi(condition1, condition2)
 
         self.heatmap_linkmatrix(c1_group_avg_hemi, c2_group_avg_hemi, status1, status2, hemi, 
-                     overlay_nums, vmin, vmax, diffvmin, diffvmax, figsize, hemimapping)
+                     overlay_nums, vmin, vmax, diffvmin, diffvmax, figsize, hemimapping, 
+                     cbar1scaling, cbar2scaling, rotate_labels)
+        return c1_group_avg_hemi, c2_group_avg_hemi
 
 
 ################################################################################
@@ -161,13 +213,6 @@ def heatmap(self, condition1, condition2, status1='C1', status2='C2', hemi=False
 ################################################################################
 
 def circle_plot(self, condition1, condition2, status1='C1', status2='C2', hemi=False):
-    if hemi == True:
-        condition1, condition2 = self._check_hemis(condition1), self._check_hemis(condition2)
-        
-    if self.conn is None:
-        self.tabulate_links(verbose=False)
-
-
     ###################################
     if hemi == False:
         c1_group_avg, c2_group_avg = self.group_averages_whole(condition1, condition2)

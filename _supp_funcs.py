@@ -137,8 +137,8 @@ def patch_to_ROI(src_target, labels):
                     # rare case where no neighbors were found, so none of these vertices 
                     # can be mapped to a label. in that case, find the next nearest patch 
                     # and declare that the vertices in this patch belong to that one.
-                    nuse = src_target[1]['nuse']
-                    dists = src_target[1]['dist'][:nuse, :nuse].todense() + np.eye(nuse)
+                    nuse = src_target[hemi_idx]['nuse']
+                    dists = src_target[hemi_idx]['dist'][:nuse, :nuse].todense() + np.eye(nuse)
                     current_patch_vert = patch_idx[0][0]
                     
                     neighbors = np.array(np.argsort(dists[current_patch_vert]))[0]
@@ -158,50 +158,50 @@ def patch_to_ROI(src_target, labels):
     return patch_to_labels
 
 
-def get_num_links(J, target_lobes, src_target, lobe_labels, normalization=False):
-    J[J > 0.95] = 1
+# def get_num_links(J, target_lobes, src_target, lobe_labels, normalization=False):
+#     J[J > 0.95] = 1
 
-    link_count = dict()
-    for lobe_src, lobe_tar in itertools.product(target_lobes, repeat=2):
-        link_count[f"{lobe_src}->{lobe_tar}"] = np.zeros(4)
+#     link_count = dict()
+#     for lobe_src, lobe_tar in itertools.product(target_lobes, repeat=2):
+#         link_count[f"{lobe_src}->{lobe_tar}"] = np.zeros(4)
 
-    patch_to_labels = patch_to_ROI(src_target, lobe_labels)
+#     patch_to_labels = patch_to_ROI(src_target, lobe_labels)
 
-    total_possible_src = dict()
-    for this_label in lobe_labels:
-        total_possible_src[this_label.name] = 0
-        for patches in patch_to_labels:
-            for this_patch in patches:
-                if this_label.name in this_patch[0]:
-                    total_possible_src[this_label.name] += this_patch[1]
+#     total_possible_src = dict()
+#     for this_label in lobe_labels:
+#         total_possible_src[this_label.name] = 0
+#         for patches in patch_to_labels:
+#             for this_patch in patches:
+#                 if this_label.name in this_patch[0]:
+#                     total_possible_src[this_label.name] += this_patch[1]
 
-    for tar, src in zip(np.nonzero(J)[0], np.nonzero(J)[1]):
-        for tup_src in patch_to_labels[src]:
-            for tup_tar in patch_to_labels[tar]:
+#     for tar, src in zip(np.nonzero(J)[0], np.nonzero(J)[1]):
+#         for tup_src in patch_to_labels[src]:
+#             for tup_tar in patch_to_labels[tar]:
 
-                this_src_lobe = tup_src[0][:-3]
-                this_tar_lobe = tup_tar[0][:-3]
-                if (this_src_lobe not in target_lobes) or (this_tar_lobe not in target_lobes):
-                    continue
-                this_src_hemi = tup_src[0][-2:]
-                this_tar_hemi = tup_tar[0][-2:]
+#                 this_src_lobe = tup_src[0][:-3]
+#                 this_tar_lobe = tup_tar[0][:-3]
+#                 if (this_src_lobe not in target_lobes) or (this_tar_lobe not in target_lobes):
+#                     continue
+#                 this_src_hemi = tup_src[0][-2:]
+#                 this_tar_hemi = tup_tar[0][-2:]
 
-                hemi_to_hemi = 0
-                if this_src_hemi == 'rh' and this_tar_hemi == 'rh':
-                    hemi_to_hemi = 1
-                elif this_src_hemi == 'lh' and this_tar_hemi == 'rh':
-                    hemi_to_hemi = 2
-                elif this_src_hemi == 'rh' and this_tar_hemi == 'lh':
-                    hemi_to_hemi = 3
+#                 hemi_to_hemi = 0
+#                 if this_src_hemi == 'rh' and this_tar_hemi == 'rh':
+#                     hemi_to_hemi = 1
+#                 elif this_src_hemi == 'lh' and this_tar_hemi == 'rh':
+#                     hemi_to_hemi = 2
+#                 elif this_src_hemi == 'rh' and this_tar_hemi == 'lh':
+#                     hemi_to_hemi = 3
 
-                link_count[f"{this_src_lobe}->{this_tar_lobe}"][hemi_to_hemi] += tup_src[1] * tup_tar[1] * J[tar, src]
+#                 link_count[f"{this_src_lobe}->{this_tar_lobe}"][hemi_to_hemi] += tup_src[1] * tup_tar[1] * J[tar, src]
 
-                normalization_factor = total_possible_src[tup_src[0]]*total_possible_src[tup_tar[0]] if \
-                    tup_tar[0] != tup_src[0] else total_possible_src[tup_src[0]]*(total_possible_src[tup_src[0]]-1)
-                if normalization == True:
-                    link_count[f"{this_src_lobe}->{this_tar_lobe}"][hemi_to_hemi] /= normalization_factor
+#                 normalization_factor = total_possible_src[tup_src[0]]*total_possible_src[tup_tar[0]] if \
+#                     tup_tar[0] != tup_src[0] else total_possible_src[tup_src[0]]*(total_possible_src[tup_src[0]]-1)
+#                 if normalization == True:
+#                     link_count[f"{this_src_lobe}->{this_tar_lobe}"][hemi_to_hemi] /= normalization_factor
 
-    return link_count
+#     return link_count
 
 """Functions to plot on circle as for connectivity."""
 
