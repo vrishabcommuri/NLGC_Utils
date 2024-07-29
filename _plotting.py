@@ -188,9 +188,9 @@ def heatmap(self, condition1, condition2, status1='C1', status2='C2', hemi=False
     ###################################
     if hemi == False:
         if norm:
-            c1_group_avg, c2_group_avg = self.group_norm_averages_whole(condition1, condition2)
+            c1_group_avg, c2_group_avg = self.group_whole_average(condition1, condition2, matnorm=True)
         else:
-            c1_group_avg, c2_group_avg = self.group_averages_whole(condition1, condition2)
+            c1_group_avg, c2_group_avg = self.group_whole_average(condition1, condition2, matnorm=False)
 
         self.heatmap_linkmatrix(c1_group_avg, c2_group_avg, status1, status2, hemi, 
                      overlay_nums, vmin, vmax, diffvmin, diffvmax, figsize, hemimapping, 
@@ -198,13 +198,14 @@ def heatmap(self, condition1, condition2, status1='C1', status2='C2', hemi=False
         return c1_group_avg, c2_group_avg
     else:
         if norm:
-            c1_group_avg_hemi, c2_group_avg_hemi = self.group_norm_averages_hemi(condition1, condition2)
+            c1_group_avg_hemi, c2_group_avg_hemi = self.group_hemi_average(condition1, condition2, matnorm=True)
         else:
-            c1_group_avg_hemi, c2_group_avg_hemi = self.group_averages_hemi(condition1, condition2)
+            c1_group_avg_hemi, c2_group_avg_hemi = self.group_hemi_average(condition1, condition2, matnorm=False)
 
         self.heatmap_linkmatrix(c1_group_avg_hemi, c2_group_avg_hemi, status1, status2, hemi, 
                      overlay_nums, vmin, vmax, diffvmin, diffvmax, figsize, hemimapping, 
                      cbar1scaling, cbar2scaling, rotate_labels)
+
         return c1_group_avg_hemi, c2_group_avg_hemi
 
 
@@ -215,7 +216,7 @@ def heatmap(self, condition1, condition2, status1='C1', status2='C2', hemi=False
 def circle_plot(self, condition1, condition2, status1='C1', status2='C2', hemi=False):
     ###################################
     if hemi == False:
-        c1_group_avg, c2_group_avg = self.group_averages_whole(condition1, condition2)
+        c1_group_avg, c2_group_avg = self.group_whole_average(condition1, condition2)
         
         
         fig, ax = plt.subplots(1, 3, figsize=(10, 3))
@@ -235,7 +236,7 @@ def circle_plot(self, condition1, condition2, status1='C1', status2='C2', hemi=F
 
     ###################################
     else:
-        c1_group_avg_hemi, c2_group_avg_hemi = self.group_averages_hemi(condition1, condition2)
+        c1_group_avg_hemi, c2_group_avg_hemi = self.group_hemi_average(condition1, condition2)
             
         
         fig, ax = plt.subplots(2, 6, figsize=(20, 7))
@@ -341,7 +342,7 @@ def _add_connection(ax, posa, posb, bidirectional=False, inner=True, arc=0.2,
     mid_dx, mid_dy = _push_wedge(pushfactor['inner'], mid_dx, mid_dy, centerxy)
     midx, midy = _push_wedge(pushfactor['inner'], midx, midy, centerxy)
 
-    ax.arrow(midx, midy, 0.001*(mid_dx-midx), 0.001*(mid_dy-midy), width=0.01, color=color['inner'])
+#     ax.arrow(midx, midy, 0.001*(mid_dx-midx), 0.001*(mid_dy-midy), width=0.01, color=color['inner'])
     
     if bidirectional:
         arrow = mpatches.FancyArrowPatch(posa, posb,
@@ -350,7 +351,7 @@ def _add_connection(ax, posa, posb, bidirectional=False, inner=True, arc=0.2,
         mid_dx, mid_dy, midx, midy = _trace_bezier_midpoint(arrow)
         mid_dx, mid_dy = _push_wedge(pushfactor['outer'], mid_dx, mid_dy, centerxy)
         midx, midy = _push_wedge(pushfactor['outer'], midx, midy, centerxy)
-        ax.arrow(midx, midy, 0.001*(midx-mid_dx), 0.001*(midy-mid_dy), width=0.01, color=color['outer'])
+#         ax.arrow(midx, midy, 0.001*(midx-mid_dx), 0.001*(midy-mid_dy), width=0.01, color=color['outer'])
         
 
 def _draw_selfloop_arrow(ax, centX, centY, radius, angle_, theta2_, color_):
@@ -396,20 +397,24 @@ def railroad_plot(lkm, rad=0.3, centerxy=(0.5, 0.5), nverts=3, region=['P','F', 
 
     xs, ys, _, _ = _get_vertices(nverts, rad, 0, centerxy)
     xs_selfloop, ys_selfloop, _, thetas_selfloop = _get_vertices(nverts, rad+0.1, 0, centerxy)
-
-    for i in range(nverts):
-        a = lkm[i, (i+1)%nverts]
-        b = lkm[(i+1)%nverts, i]
+    
+    # create links in order of darkness (lightest first)
+    is_, js_ = np.unravel_index(np.argsort(lkm, axis=None), (nverts,nverts))
+    
+    for i, j in zip(is_, js_):
+        a = lkm[i, j]
+        b = lkm[j, i]
         assert(a <= 1 and a >= 0 and b <= 1 and b >= 0)
         if a == 1:
             a = a - 0.00001
         if b == 1:
             b = b - 0.00001
 
+
         color_i = cmap(a)
         color_o = cmap(b)
-        _add_connection(ax, (xs[i], ys[i]), (xs[(i+1)%nverts], ys[(i+1)%nverts]), 
-                    bidirectional=True, arc=0.25, pushfactor={'inner':0.715, 'outer':1.147}, 
+        _add_connection(ax, (xs[i], ys[i]), (xs[j], ys[j]), 
+                    bidirectional=True, arc=0.25, pushfactor=pushfactor, 
                     color={'inner':color_i, 'outer':color_o})
 
 
